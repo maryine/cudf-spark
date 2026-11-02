@@ -43,7 +43,21 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 
+import org.apache.spark.sql.rapids.GpuTaskMetrics
+
 class OrcPerfIOReadSuite extends AnyFunSuite with Matchers with MockitoSugar {
+  test("GCS PerfIO metric recording tolerates unregistered accumulators") {
+    val metrics = new GpuTaskMetrics
+    metrics.recordPerfioGCSBackendOnce()
+    metrics.recordPerfioGCSBackendOnce()
+  }
+
+  test("S3 PerfIO metric recording tolerates unregistered accumulators") {
+    val metrics = new GpuTaskMetrics
+    metrics.recordPerfioS3BackendOnce()
+    metrics.recordPerfioS3BackendOnce()
+  }
+
   private case class RecordedRange(inputOffset: Long, length: Long, outputOffset: Long)
 
   private class RecordingInputFile(
