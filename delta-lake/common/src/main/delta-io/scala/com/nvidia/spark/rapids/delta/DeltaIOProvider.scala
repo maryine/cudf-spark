@@ -20,8 +20,8 @@ import java.lang.reflect.Field
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.util.control.NonFatal
 import scala.util.Try
+import scala.util.control.NonFatal
 
 import com.nvidia.spark.rapids._
 import org.apache.hadoop.fs.Path
