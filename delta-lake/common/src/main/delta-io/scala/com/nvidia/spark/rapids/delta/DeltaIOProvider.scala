@@ -20,11 +20,13 @@ import java.lang.reflect.Field
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.util.control.NonFatal
 import scala.util.Try
 
 import com.nvidia.spark.rapids._
 import org.apache.hadoop.fs.Path
 
+import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.catalog.CatalogTable
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -323,8 +325,21 @@ abstract class DeltaIOProvider extends DeltaProviderImplBase {
  * open source delta.io Delta Lake.
  * @note This is instantiated via reflection from ShimLoader.
  */
-class DeltaProbeImpl extends DeltaProbe {
+class DeltaProbeImpl extends DeltaProbe with Logging {
   override def getDeltaProvider: DeltaProvider = {
+    try {
+      loadDeltaProvider
+    } catch {
+      case error: LinkageError =>
+        logWarning("Delta Lake GPU support is unavailable; falling back to CPU Delta Lake", error)
+        NoDeltaProvider
+      case NonFatal(error) =>
+        logWarning("Delta Lake GPU support is unavailable; falling back to CPU Delta Lake", error)
+        NoDeltaProvider
+    }
+  }
+
+  protected def loadDeltaProvider: DeltaProvider = {
     val cpuClassName = "org.apache.spark.sql.delta.sources.DeltaDataSource"
     val hasDeltaJar = UnshimmedTrampolineUtil.classIsLoadable(cpuClassName) &&
         Try(ShimReflectionUtils.loadClass(cpuClassName)).isSuccess
