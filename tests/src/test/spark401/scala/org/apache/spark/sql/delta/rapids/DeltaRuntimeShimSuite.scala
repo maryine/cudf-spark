@@ -36,6 +36,21 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType, VariantType}
 
 class DeltaRuntimeShimSuite extends SparkQueryCompareTestSuite {
+  test("Delta 3 runtime shim selection checks the Delta and Spark versions") {
+    Seq("3.3.0", "3.3.3").foreach { deltaVersion =>
+      Seq("3.5.3", "3.5.8", "3.5.3-dataproc").foreach { sparkVersion =>
+        assert(DeltaRuntimeShim.getDelta3ShimClassName(deltaVersion, sparkVersion)
+          .exists(_.contains("delta33x")))
+      }
+    }
+    Seq("3.0.0", "3.1.0", "3.2.1", "3.4.0").foreach { deltaVersion =>
+      assert(DeltaRuntimeShim.getDelta3ShimClassName(deltaVersion, "3.5.3").isEmpty)
+    }
+    Seq("3.4.4", "3.5.0", "3.5.2", "4.0.0", "4.1.1").foreach { sparkVersion =>
+      assert(DeltaRuntimeShim.getDelta3ShimClassName("3.3.3", sparkVersion).isEmpty)
+    }
+  }
+
   test("delta provider resolves from the installed Delta Lake version") {
     val provider = DeltaProvider()
     assert(provider ne NoDeltaProvider)

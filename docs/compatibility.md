@@ -404,6 +404,15 @@ The plugin supports reading and writing `uncompressed`, `snappy`, `gzip` and `zs
 At this point, the plugin cannot fall back to the CPU when reading an unsupported compression
 format, and will error out in that case.
 
+## Optional OSS Delta Lake integration
+
+On Spark 3.5.3 and later Spark 3.5 releases, OSS Delta Lake acceleration requires
+Delta Lake 3.3.x. Other Delta 3.x versions, including Delta Lake 3.2.1 shipped by
+some managed runtimes, do not use the Delta 3.3 shim. If the optional Delta provider
+cannot initialize, the plugin logs a warning and disables Delta acceleration
+instead of failing unrelated queries such as Parquet reads. This does not make an
+otherwise incompatible Spark and Delta Lake installation supported by Delta Lake.
+
 ## Delta Lake low shuffle merge on Databricks Runtime 17.3
 
 Low shuffle merge is disabled by default because Delta Lake 2.4 does not support it

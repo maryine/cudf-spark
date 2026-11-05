@@ -21,10 +21,12 @@ import java.lang.reflect.Field
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.util.Try
+import scala.util.control.NonFatal
 
 import com.nvidia.spark.rapids._
 import org.apache.hadoop.fs.Path
 
+import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.catalog.CatalogTable
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -323,15 +325,24 @@ abstract class DeltaIOProvider extends DeltaProviderImplBase {
  * open source delta.io Delta Lake.
  * @note This is instantiated via reflection from ShimLoader.
  */
-class DeltaProbeImpl extends DeltaProbe {
+class DeltaProbeImpl extends DeltaProbe with Logging {
   override def getDeltaProvider: DeltaProvider = {
-    val cpuClassName = "org.apache.spark.sql.delta.sources.DeltaDataSource"
-    val hasDeltaJar = UnshimmedTrampolineUtil.classIsLoadable(cpuClassName) &&
-        Try(ShimReflectionUtils.loadClass(cpuClassName)).isSuccess
-    if (hasDeltaJar) {
-      DeltaRuntimeShim.getDeltaProvider
-    } else {
-      NoDeltaProvider
+    try {
+      val cpuClassName = "org.apache.spark.sql.delta.sources.DeltaDataSource"
+      val hasDeltaJar = UnshimmedTrampolineUtil.classIsLoadable(cpuClassName) &&
+          Try(ShimReflectionUtils.loadClass(cpuClassName)).isSuccess
+      if (hasDeltaJar) {
+        DeltaRuntimeShim.getDeltaProvider
+      } else {
+        NoDeltaProvider
+      }
+    } catch {
+      case error: LinkageError =>
+        logWarning("Delta Lake acceleration is unavailable; using NoDeltaProvider", error)
+        NoDeltaProvider
+      case NonFatal(error) =>
+        logWarning("Delta Lake acceleration is unavailable; using NoDeltaProvider", error)
+        NoDeltaProvider
     }
   }
 }

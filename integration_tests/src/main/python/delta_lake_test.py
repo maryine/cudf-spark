@@ -35,6 +35,16 @@ from spark_session import with_cpu_session, with_gpu_session, is_databricks_runt
 _conf = {'spark.rapids.sql.explain': 'ALL'}
 
 
+@delta_lake
+def test_non_delta_query_with_delta_on_classpath(spark_tmp_path):
+    data_path = spark_tmp_path + "/parquet_with_delta_classpath"
+    with_cpu_session(lambda spark: gen_df(spark, [("value", long_gen)], length=100)
+        .write.parquet(data_path))
+    assert_gpu_and_cpu_are_equal_collect(
+        lambda spark: spark.read.parquet(data_path).selectExpr("value", "value IS NULL"),
+        conf=_conf)
+
+
 def _assert_db173_gpu_delta_scan_if_enabled(spark, df):
     if is_databricks173_or_later() and \
             str(spark.conf.get("spark.rapids.sql.enabled", "false")).lower() == "true":

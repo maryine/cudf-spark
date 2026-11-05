@@ -184,10 +184,27 @@ object DeltaRuntimeShim {
     }
   }
 
+  private[rapids] def getDelta3ShimClassName(
+      deltaVersion: String,
+      sparkVersion: String): Option[String] = {
+    (deltaVersion, parseSparkVersion(sparkVersion)) match {
+      case (version, (3, 5, patch)) if version.startsWith("3.3.") && patch >= 3 =>
+        Some("org.apache.spark.sql.delta.rapids.delta33x.Delta33xRuntimeShim")
+      case _ => None
+    }
+  }
+
   private def getShimClassName: String = {
-    getDelta43ShimClassName(io.delta.VERSION, SPARK_VERSION)
-      .orElse(getDelta42ShimClassName(io.delta.VERSION, SPARK_VERSION))
-      .getOrElse(getPreDelta42ShimClassName)
+    if (io.delta.VERSION.startsWith("3.")) {
+      getDelta3ShimClassName(io.delta.VERSION, SPARK_VERSION).getOrElse {
+        throw new IllegalStateException(
+          s"Unsupported Delta Lake ${io.delta.VERSION} and Spark $SPARK_VERSION combination")
+      }
+    } else {
+      getDelta43ShimClassName(io.delta.VERSION, SPARK_VERSION)
+        .orElse(getDelta42ShimClassName(io.delta.VERSION, SPARK_VERSION))
+        .getOrElse(getPreDelta42ShimClassName)
+    }
   }
 
   private[rapids] lazy val shimInstance = {
